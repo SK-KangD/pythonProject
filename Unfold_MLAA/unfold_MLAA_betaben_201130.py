@@ -53,13 +53,13 @@ def proj_mumap(umap, sysMat):
 
     return umapPrjImg
 
-def EMiter(sino_reshape, img, umap, sysMat):
+def EMiter(sino_reshape, img, umap, bed, sysMat):
     imdim = img.get_shape().as_list()
 
     img_reshape = tf.transpose(img, [1, 2, 0, 3])
     img_reshape = tf.reshape(img_reshape, [120 * 120, FLAGS.batch_size * imdim[3]])
 
-    umap_reshape = tf.transpose(umap, [1, 2, 0, 3])
+    umap_reshape = tf.transpose(umap+bed, [1, 2, 0, 3])
     umap_reshape = tf.reshape(umap_reshape, [120 * 120, FLAGS.batch_size * imdim[3]])
 
     umapPrjImg = tf.sparse_tensor_dense_matmul(sysMat, umap_reshape)
@@ -82,13 +82,13 @@ def EMiter(sino_reshape, img, umap, sysMat):
 
     return imgEst
 
-def TRiter(sino_reshape, umap, img, sysMat):
+def TRiter(sino_reshape, umap, img, bed, sysMat):
     imdim = img.get_shape().as_list()
 
     img_reshape = tf.transpose(img, [1, 2, 0, 3])
     img_reshape = tf.reshape(img_reshape, [120 * 120, FLAGS.batch_size * imdim[3]])
 
-    umap_reshape = tf.transpose(umap, [1, 2, 0, 3])
+    umap_reshape = tf.transpose(umap+bed, [1, 2, 0, 3])
     umap_reshape = tf.reshape(umap_reshape, [120 * 120, FLAGS.batch_size * imdim[3]])
 
     prjImg = tf.sparse_tensor_dense_matmul(sysMat, img_reshape)
@@ -172,6 +172,7 @@ def train(train_dir):
         xlr4 = tf.cond(do_flip2, lambda: tf.image.flip_left_right(xlr4), lambda: xlr4)
         xlr5 = tf.cond(do_flip2, lambda: tf.image.flip_left_right(xlr5), lambda: xlr5)
         xlr6 = tf.cond(do_flip2, lambda: tf.image.flip_left_right(xlr6), lambda: xlr6)
+        xlr7 = tf.cond(do_flip2, lambda: tf.image.flip_left_right(xlr7), lambda: xlr7)
 
         # do_flip3 = tf.random_uniform([]) > 0.5
         # xlr1 = tf.cond(do_flip3, lambda: tf.reverse(xlr1, axis=[-1]), lambda: xlr1)
@@ -191,9 +192,9 @@ def train(train_dir):
         # upout = []
         for iter in range(0, OUT_ITER):
             # EM update
-            x = EMiter(sino_reshape, tf.nn.relu(x), tf.nn.relu(u), loaded_sparse_tf)
+            x = EMiter(sino_reshape, tf.nn.relu(x), tf.nn.relu(u), tf.nn.relu(xlr7), loaded_sparse_tf)
             x = lays.unfold_resnet_xup(x, u, layer_name='gen_x_up' + str(iter), scale=1, keep_prob=0.9)
-            u = TRiter(sino_reshape, tf.nn.relu(u), tf.nn.relu(x), loaded_sparse_tf)
+            u = TRiter(sino_reshape, tf.nn.relu(u), tf.nn.relu(x), tf.nn.relu(xlr7), loaded_sparse_tf)
             u = lays.unfold_resnet_xup(u, x, layer_name='gen_u_up' + str(iter), scale=1, keep_prob=0.9)
 
             xout.append(x)
@@ -205,7 +206,7 @@ def train(train_dir):
                 lays._activation_image_2d(tf.nn.relu(x), 0, name='ITER: ' + str(iter) + 'im_Output')
                 # lays._activation_image_2d(z, 0,
                 #                           name='ITER: ' + str(iter) + 'z_Output')
-        u_prj = tf.nn.relu(proj_mumap(tf.nn.relu(u), loaded_sparse_tf))
+        u_prj = tf.nn.relu(proj_mumap(tf.nn.relu(u + xlr7), loaded_sparse_tf))
         #
         lays._activation_image_2d(tf.nn.relu(u), 0, name='ITER: ' + 'final_' + '_u_Output')
         lays._activation_image_2d(tf.nn.relu(x), 0, name='ITER: ' + 'final_' + '_x_Output')

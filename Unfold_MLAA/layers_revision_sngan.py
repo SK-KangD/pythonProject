@@ -21,7 +21,7 @@ tf.flags.DEFINE_integer('batch_size', 1,
                             """Number of images to process in a batch.""")
 tf.flags.DEFINE_integer('batch_size_eval', 1,
                             """Number of images to process in a batch.""")
-tf.flags.DEFINE_string('data_dir1', r'D:\SKK_DL\Unfold_MLAA\data\train_data_1130_2',
+tf.flags.DEFINE_string('data_dir1', r'D:\SKK_DL\Unfold_MLAA\data\train_data_1130_3',
                            """Path to the data directory.""")
 
 
